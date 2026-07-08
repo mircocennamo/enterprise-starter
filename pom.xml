@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+
+  <groupId>it.interno.platform</groupId>
+  <artifactId>platform-parent</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+ <packaging>pom</packaging>
+  <description>librerie enterprise</description>
+
+  <modules>
+    <module>platform-bom</module>
+    <module>platform-web</module>
+    <module>platform-core</module>
+    <module>platform-autoconfigure</module>
+    <module>platform-spring-boot-starter</module>
+    <module>platform-security</module>
+  </modules>
+
+  <properties>
+    <java.version>25</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.compiler.plugin>3.15.0</maven.compiler.plugin>
+    <spring.boot.version>4.1.0</spring.boot.version>
+  </properties>
+
+
+  <scm>
+    <url>https://github.com/mircocennamo/enterprise-starter.git</url>
+    <connection>scm:git:https://github.com/mircocennamo/enterprise-starter.git</connection>
+    <developerConnection>scm:git:https://github.com/mircocennamo/enterprise-starter.git</developerConnection>
+    <tag>@{project.version}</tag>
+  </scm>
+
+
+
+
+
+    <dependencyManagement>
+        <dependencies>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+
+    </dependencyManagement>
+
+<build>
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.openrewrite.maven</groupId>
+                <artifactId>rewrite-maven-plugin</artifactId>
+                <version>6.40.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.openrewrite.recipe </groupId>
+                        <artifactId>rewrite-spring</artifactId>
+                        <version>6.31.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin}</version>
+                <configuration>
+
+                    <showWarnings>true</showWarnings>
+                    <release>${java.version}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>3.0.1</version>
+                <configuration>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <releaseProfiles>releases</releaseProfiles>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </pluginManagement>
+</build>
+
+</project>
