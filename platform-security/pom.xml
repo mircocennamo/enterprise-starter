@@ -10,7 +10,7 @@
    <parent>
        <groupId>it.interno.platform</groupId>
        <artifactId>platform-parent</artifactId>
-       <version>0.0.1-SNAPSHOT</version>
+       <version>0.0.3-SNAPSHOT</version>
    </parent>
 
     <dependencies>
@@ -44,6 +44,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
     </dependencies>

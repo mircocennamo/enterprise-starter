@@ -3,6 +3,7 @@ package it.interno.platform.starter.web.advice;
 
 import it.interno.platform.starter.web.exceptions.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionAdvice {
 
     // ✅ 404 - Resource not found
@@ -29,7 +31,7 @@ public class GlobalExceptionAdvice {
         problem.setProperty("path", request.getRequestURI());
         problem.setProperty("traceparent", MDC.get("traceparent"));
         problem.setProperty("errorCode", ex.getCode());
-
+        log.error("BusinessException occurred: {}", ex.getMessage());
         return problem;
     }
 
@@ -46,6 +48,7 @@ public class GlobalExceptionAdvice {
                 errors.put(err.getField(), err.getDefaultMessage())
         );
 
+        log.error("Validation errors occurred: {}", errors);
         problem.setProperty("errors", errors);
         problem.setProperty("timestamp", Instant.now());
         problem.setProperty("errorCode", "VALIDATION_ERROR");
@@ -63,7 +66,7 @@ public class GlobalExceptionAdvice {
         problem.setDetail(ex.getMessage());
         problem.setProperty("timestamp", Instant.now());
         problem.setProperty("errorCode", "INTERNAL_ERROR");
-
+        log.error("Generic error occurred: {}", ex.getMessage());
         return problem;
     }
 }

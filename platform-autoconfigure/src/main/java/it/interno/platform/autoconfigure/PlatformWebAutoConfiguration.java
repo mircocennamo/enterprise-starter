@@ -1,7 +1,7 @@
 package it.interno.platform.autoconfigure;
 
 import it.interno.platform.starter.web.advice.GlobalExceptionAdvice;
-import it.interno.platform.starter.web.client.HttpExchangeConfig;
+
 import it.interno.platform.starter.security.JwtAuthenticationFilter;
 import it.interno.platform.starter.security.JwtTokenProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -32,7 +32,6 @@ import org.springframework.context.annotation.Import;
 })
 @Import({
     GlobalExceptionAdvice.class,
-    HttpExchangeConfig.class,
     JwtTokenProvider.class,
     JwtAuthenticationFilter.class
 })
