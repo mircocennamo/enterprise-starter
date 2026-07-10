@@ -4,37 +4,45 @@ import it.interno.platform.starter.web.advice.GlobalExceptionAdvice;
 
 import it.interno.platform.starter.security.JwtAuthenticationFilter;
 import it.interno.platform.starter.security.JwtTokenProvider;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
+
+import java.net.http.HttpClient;
+import java.time.Duration;
 
 /**
  * Spring Boot AutoConfiguration for Interno Platform libraries.
- * 
+ * <p>
  * Automatically registers all platform beans when the starter library is imported:
  * - Global exception handling (GlobalExceptionAdvice)
  * - HTTP client configuration with JWT support (HttpExchangeConfig)
  * - JWT authentication provider (JwtTokenProvider)
  * - JWT authentication filter (JwtAuthenticationFilter)
- * 
+ * <p>
  * No additional configuration required - just add the starter to your classpath.
- * 
+ * <p>
  * NOTE: PongClient is NOT auto-registered as it's a service-specific client.
  * Applications can independently enable it via @ImportHttpServices or configuration.
  */
 @AutoConfiguration
 @ComponentScan({
-    "it.interno.platform.starter.core",
-    "it.interno.platform.starter.web",
-    "it.interno.platform.starter.security"
+        "it.interno.platform.starter.core",
+        "it.interno.platform.starter.web",
+        "it.interno.platform.starter.security"
 })
 @Import({
-    GlobalExceptionAdvice.class,
-    JwtTokenProvider.class,
-    JwtAuthenticationFilter.class
+        GlobalExceptionAdvice.class,
+        JwtTokenProvider.class,
+        JwtAuthenticationFilter.class
 })
+@Slf4j
 public class PlatformWebAutoConfiguration {
 
     /**
@@ -59,9 +67,71 @@ public class PlatformWebAutoConfiguration {
      * Registers GlobalExceptionAdvice as a bean if not already defined by the application.
      */
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean // crea il bean globale solo se non esiste già un altro bean GlobalExceptionAdvice.
     public GlobalExceptionAdvice globalExceptionAdvice() {
         return new GlobalExceptionAdvice();
+    }
+
+
+    @Bean
+    //avrò più bean di tipo RestClientHttpServiceGroupConfigurer uno globale e uno specifico non
+    //va messa annotation @ConditionalOnMissingBean
+    public RestClientHttpServiceGroupConfigurer globalHttpServiceConfigurer(
+            JwtTokenProvider jwtTokenProvider,ClientHttpRequestFactory requestFactory) {
+
+        return groups -> groups.forEachClient((group, builder) -> {
+
+
+            log.info("Configurazione globale applicata al gruppo [{}]", group.name());
+
+            //
+            // Header comuni
+            //
+            builder.defaultHeader("X-Platform", "interno-platform");
+
+            // time out globali
+            builder.requestFactory(requestFactory);
+
+            //
+            // Propagazione JWT
+            //
+            builder.requestInterceptor((request, body, execution) -> {
+
+                String token = jwtTokenProvider.getToken();
+
+                if (token != null && !token.isBlank()) {
+                    request.getHeaders().setBearerAuth(token);
+                }
+
+                return execution.execute(request, body);
+            });
+
+            //
+            // Gestione errori comune
+            //
+            builder.defaultStatusHandler(
+                    status -> status.is5xxServerError(),
+                    (request, response) -> {
+                        log.error(
+                                "Errore {} durante chiamata a {}",
+                                response.getStatusCode(),
+                                request.getURI());
+                    });
+        });
+    }
+
+    @Bean
+    public ClientHttpRequestFactory clientHttpRequestFactory() {
+
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
+
+        JdkClientHttpRequestFactory factory =
+                new JdkClientHttpRequestFactory(httpClient);
+
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        return factory;
     }
 
 }
