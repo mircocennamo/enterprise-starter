@@ -10,8 +10,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
 
 import java.net.http.HttpClient;
@@ -102,15 +104,21 @@ public class PlatformWebAutoConfiguration {
                 if (token != null && !token.isBlank()) {
                     request.getHeaders().setBearerAuth(token);
                 }
+                try {
+                    return execution.execute(request, body);
+                }
 
-                return execution.execute(request, body);
+                catch (Exception ex) {
+                    log.error("HTTP client exception verso [{}]: {}", request.getURI(), ex.getMessage(), ex);
+                    throw ex;
+                }
             });
 
             //
             // Gestione errori comune
             //
             builder.defaultStatusHandler(
-                    status -> status.is5xxServerError(),
+                    status -> status.isError(),
                     (request, response) -> {
                         log.error(
                                 "Errore {} durante chiamata a {}",
