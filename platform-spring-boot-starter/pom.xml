@@ -2,38 +2,45 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-<modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-<parent>
-    <groupId>it.interno.platform</groupId>
-    <artifactId>platform-parent</artifactId>
-    <version>0.0.3-SNAPSHOT</version>
-</parent>
-
-<artifactId>platform-spring-boot-starter</artifactId>
-
-<dependencies>
-
-    <dependency>
+    <parent>
         <groupId>it.interno.platform</groupId>
-        <artifactId>platform-core</artifactId>
-        <version>${project.version}</version>
-    </dependency>
+        <artifactId>platform-parent</artifactId>
+        <version>0.0.3-SNAPSHOT</version>
+    </parent>
 
-    <dependency>
-        <groupId>it.interno.platform</groupId>
-        <artifactId>platform-autoconfigure</artifactId>
-        <version>${project.version}</version>
-    </dependency>
+    <artifactId>platform-spring-boot-starter</artifactId>
 
-    <dependency>
-        <groupId>it.interno.platform</groupId>
-        <artifactId>platform-security</artifactId>
-        <version>${project.version}</version>
-    </dependency>
+    <dependencies>
+        <dependency>
+            <groupId>it.interno.platform</groupId>
+            <artifactId>platform-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
+        <dependency>
+            <groupId>it.interno.platform</groupId>
+            <artifactId>platform-autoconfigure</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
+        <dependency>
+            <groupId>it.interno.platform</groupId>
+            <artifactId>platform-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
-</dependencies>
+        <dependency>
+            <groupId>it.interno.platform</groupId>
+            <artifactId>platform-web</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>

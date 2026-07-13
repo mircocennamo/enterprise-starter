@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
 
 
   <groupId>it.interno.platform</groupId>
@@ -9,8 +15,9 @@
  <packaging>pom</packaging>
   <description>librerie enterprise</description>
 
+
+
   <modules>
-    <module>platform-bom</module>
     <module>platform-web</module>
     <module>platform-core</module>
     <module>platform-autoconfigure</module>
@@ -22,8 +29,9 @@
     <java.version>25</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <maven.compiler.plugin>3.15.0</maven.compiler.plugin>
-    <spring.boot.version>4.1.0</spring.boot.version>
+    <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
+    <lombok.version>1.18.46</lombok.version>
+    <openapi.version>3.0.3</openapi.version>
   </properties>
 
 
@@ -42,42 +50,64 @@
         <dependencies>
 
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
             </dependency>
+
+            <dependency>
+                <groupId>it.interno.platform</groupId>
+                <artifactId>platform-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>it.interno.platform</groupId>
+                <artifactId>platform-autoconfigure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>it.interno.platform</groupId>
+                <artifactId>platform-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>it.interno.platform</groupId>
+                <artifactId>platform-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>it.interno.platform</groupId>
+                <artifactId>platform-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${openapi.version}</version>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>
 
-<build>
-    <pluginManagement>
+
+
+
+
+    <build>
         <plugins>
-            <plugin>
-                <groupId>org.openrewrite.maven</groupId>
-                <artifactId>rewrite-maven-plugin</artifactId>
-                <version>6.40.0</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.openrewrite.recipe </groupId>
-                        <artifactId>rewrite-spring</artifactId>
-                        <version>6.31.0</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-
-            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven.compiler.plugin}</version>
+                <version>${maven.compiler.plugin.version}</version>
                 <configuration>
 
                     <showWarnings>true</showWarnings>
@@ -86,6 +116,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
@@ -102,8 +133,58 @@
                 </configuration>
             </plugin>
 
+
+
+
+
+
+
+
+
+
         </plugins>
-    </pluginManagement>
-</build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+
+                </plugin>
+                <plugin>
+                    <groupId>org.openrewrite.maven</groupId>
+                    <artifactId>rewrite-maven-plugin</artifactId>
+                    <version>6.40.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.openrewrite.recipe </groupId>
+                            <artifactId>rewrite-spring</artifactId>
+                            <version>6.31.0</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                </plugin>
+
+            </plugins>
+        </pluginManagement>
+    </build>
+
+
+
+
+
+
+
+
+
+
 
 </project>

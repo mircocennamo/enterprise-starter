@@ -30,12 +30,10 @@ public class SecurityConfig {
 
                 // Authorize requests
                 .authorizeHttpRequests(auth -> auth
-                        // Allow public access to H2 Console (disabling frameOptions security is also
-                        // needed)
-                        // .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
-                        // Require authentication for all REST API endpoints
-                        // .requestMatchers(new AntPathRequestMatcher("/api/**")).authenticated()
-                        .anyRequest().permitAll())
+                        //.requestMatchers("/api/public/**").permitAll()
+                        //.requestMatchers("/api/**").authenticated()
+                        .anyRequest().permitAll()
+                )
 
                 // Required for H2 Console to show correctly in frames
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))

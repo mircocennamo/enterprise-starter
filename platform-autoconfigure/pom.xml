@@ -15,11 +15,7 @@
    <name>Interno Platform AutoConfiguration</name>
    <description>Spring Boot AutoConfiguration for Interno Platform</description>
 
-   <properties>
-       <maven.compiler.source>25</maven.compiler.source>
-       <maven.compiler.target>25</maven.compiler.target>
-       <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-   </properties>
+
 
    <dependencies>
        <!-- Internal modules -->
@@ -57,7 +53,7 @@
        <dependency>
            <groupId>org.projectlombok</groupId>
            <artifactId>lombok</artifactId>
-           <optional>true</optional>
+           <scope>provided</scope>
        </dependency>
    </dependencies>
 
