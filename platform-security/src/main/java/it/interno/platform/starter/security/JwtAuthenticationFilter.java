@@ -30,10 +30,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (!token.isBlank()) {
                 // In a production app, you would parse and validate the JWT (e.g. using io.jsonwebtoken library)
                 // For demonstration, we assume any token starting with 'Bearer ' is valid and use a mock user.
-                String username = "jwt-user";
+
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        username, token, Collections.emptyList());
+                        null, token, Collections.emptyList());
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
