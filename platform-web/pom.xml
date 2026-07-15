@@ -37,11 +37,7 @@
             <artifactId>platform-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>it.interno.platform</groupId>
-            <artifactId>platform-security</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+
 
 
 

@@ -1,46 +1,23 @@
 package it.interno.platform.starter.security.config;
 
-import it.interno.platform.starter.security.JwtAuthenticationFilter;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-@Configuration
-@EnableWebSecurity
+/**
+ * @deprecated This class is no longer needed.
+ * The SecurityFilterChain is now registered directly by
+ * {@link it.interno.platform.autoconfigure.PlatformWebAutoConfiguration}
+ * with {@code @ConditionalOnMissingBean(SecurityFilterChain.class)}.
+ * <p>
+ * To customize security, simply declare your own {@code SecurityFilterChain} bean
+ * in your application's {@code @Configuration} class:
+ * <pre>
+ *   {@code @Bean}
+ *   public SecurityFilterChain mySecurityFilterChain(HttpSecurity http) throws Exception {
+ *       // your custom configuration
+ *       return http.build();
+ *   }
+ * </pre>
+ * This class will be removed in a future release.
+ */
+@Deprecated(since = "0.0.3", forRemoval = true)
 public class SecurityConfig {
-
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // Disable CSRF since REST APIs are stateless
-                .csrf(csrf -> csrf.disable())
-
-                // Set stateless session management
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // Authorize requests
-                .authorizeHttpRequests(auth -> auth
-                        //.requestMatchers("/api/public/**").permitAll()
-                        //.requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll()
-                )
-
-                // Required for H2 Console to show correctly in frames
-                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
-
-                // Add custom JWT filter
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
-    }
+    private SecurityConfig() {}
 }

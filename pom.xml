@@ -23,6 +23,7 @@
     <module>platform-autoconfigure</module>
     <module>platform-spring-boot-starter</module>
     <module>platform-security</module>
+    <module>platform-bom</module>
   </modules>
 
   <properties>
