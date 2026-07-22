@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Optional;
+
 @Slf4j
 public class JwtTokenProvider {
 
@@ -13,12 +15,15 @@ public class JwtTokenProvider {
      *
      * @return the token string, or null if not authenticated or no token found.
      */
-    public String getToken() {
-        log.info("JwtTokenProvider -> getToken() called");
+    public Optional<String> getToken() {
+        log.info("aaaaa -> JwtTokenProvider -> getToken() called");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getCredentials() instanceof String credentials) {
-            return credentials;
+        if (authentication != null && authentication.getCredentials() instanceof String token) {
+            log.info("bbbbbb");
+            log.info("token {} " , token);
+            return Optional.of(token);
         }
-        return null;
+        log.info("authentication is null");
+        return Optional.empty();
     }
 }

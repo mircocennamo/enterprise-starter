@@ -1,1 +1,2 @@
 it.interno.platform.autoconfigure.PlatformWebAutoConfiguration
+it.interno.platform.autoconfigure.EnterpriseCacheAutoConfiguration

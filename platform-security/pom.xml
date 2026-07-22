@@ -50,6 +50,10 @@
            <groupId>org.projectlombok</groupId>
            <artifactId>lombok</artifactId>
        </dependency>
+       <dependency>
+           <groupId>it.interno.platform</groupId>
+           <artifactId>platform-core</artifactId>
+       </dependency>
    </dependencies>
 
 </project>

@@ -1,8 +1,12 @@
 package it.interno.platform.autoconfigure;
 
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
 import it.interno.platform.starter.security.JwtAuthenticationFilter;
 import it.interno.platform.starter.security.JwtTokenProvider;
 import it.interno.platform.starter.web.advice.GlobalExceptionAdvice;
+import it.interno.platform.starter.web.filter.LoggingFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -11,12 +15,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
 
 import java.net.http.HttpClient;
+import java.util.Optional;
 
 /**
  * Spring Boot AutoConfiguration for Interno Platform libraries.
@@ -95,15 +102,23 @@ public class PlatformWebAutoConfiguration {
         http
                 // Disable CSRF since REST APIs are stateless
                 .csrf(csrf -> csrf.disable())
+                // sameOrigin
+                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 
                 // Set stateless session management
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
                 // Permit all by default - override SecurityFilterChain to restrict access
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .exceptionHandling(ex->ex.accessDeniedHandler
+                        ((request, response, accessDeniedException) ->{
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"Accesso Negato: permessi insufficienti\"}");
+                                    }
+                        ))
 
-                // Required for H2 Console to show correctly in frames
-                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
 
                 // Add custom JWT filter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -140,11 +155,13 @@ public class PlatformWebAutoConfiguration {
 
             // Propagazione JWT
             builder.requestInterceptor((request, body, execution) -> {
-                String token = jwtTokenProvider.getToken();
-                if (token != null && !token.isBlank()) {
-                    request.getHeaders().setBearerAuth(token);
-                }
-                try {
+                 jwtTokenProvider.getToken()
+                         .ifPresent(token -> {
+                             log.info("Propagating JWT token for request to {}", request.getURI());
+                             request.getHeaders().setBearerAuth(token);
+
+                         });
+                 try {
                     return execution.execute(request, body);
                 } catch (Exception ex) {
                     log.error("HTTP client exception verso [{}]: {}", request.getURI(), ex.getMessage(), ex);
@@ -186,5 +203,28 @@ public class PlatformWebAutoConfiguration {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(http.getReadTimeout());
         return factory;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public OpenAPI customOpenApi(){
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Interno Platform API")
+                        .version("v1")
+                        .description("API  Interno Platform con autenticazione JWT."))
+                .addSecurityItem(new io.swagger.v3.oas.models.security.SecurityRequirement().addList("bearerAuth"))
+                .components(new io.swagger.v3.oas.models.Components()
+                        .addSecuritySchemes("bearerAuth", new io.swagger.v3.oas.models.security.SecurityScheme()
+                                .type(io.swagger.v3.oas.models.security.SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")));
+    }
+
+
+    @Bean
+    @ConditionalOnMissingBean
+    public LoggingFilter loggingFilter() {
+        return new LoggingFilter();
     }
 }
