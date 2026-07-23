@@ -23,7 +23,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
 
 import java.net.http.HttpClient;
-import java.util.Optional;
 
 /**
  * Spring Boot AutoConfiguration for Interno Platform libraries.

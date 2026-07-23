@@ -1,222 +1,355 @@
 package it.interno.platform.starter.web.filter;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Enumeration;
-
-
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@Order(1)
+@Order(2)
 public class LoggingFilter extends OncePerRequestFilter {
 
-    private static final int MAX_BODY_LENGTH = 10000;
-    private static final int CACHE_LIMIT = 10000;
+    private static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
+
+    @Value("${app.logging.max-body-length:10000}")
+    private int maxBodyLength;
+
+    @Value("${app.logging.cache-limit:10000}")
+    private int cacheLimit;
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Wrap per leggere il body multiple volte
-        ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request,CACHE_LIMIT);
-        ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
+        ContentCachingRequestWrapper requestWrapper =
+                new ContentCachingRequestWrapper(request, cacheLimit);
 
-        long startTime = System.currentTimeMillis();
+        ContentCachingResponseWrapper responseWrapper =
+                new ContentCachingResponseWrapper(response);
+
+        long startNanos = System.nanoTime();
 
         try {
-            // Log richiesta in ingresso
-            logRequest(requestWrapper);
 
-            // Esegui la catena
             filterChain.doFilter(requestWrapper, responseWrapper);
 
-            // Log risposta
-            logResponse(responseWrapper, startTime);
+            long elapsedNanos = System.nanoTime() - startNanos;
+
+            logRequestAndResponse(
+                    requestWrapper,
+                    responseWrapper,
+                    Duration.ofNanos(elapsedNanos));
 
         } finally {
-            // Copia il body nella response originale (ESSENZIALE!)
+
             responseWrapper.copyBodyToResponse();
+
         }
     }
 
-    private void logRequest(ContentCachingRequestWrapper request) {
-        if (!log.isInfoEnabled()) return;
+    private void logRequestAndResponse(
+            ContentCachingRequestWrapper request,
+            ContentCachingResponseWrapper response,
+            Duration duration
+            ) {
 
-        StringBuilder sb = new StringBuilder("\n REQUEST\n");
-        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        String method = request.getMethod();
+        String uri = request.getRequestURI();
 
-        // Metodo e URI
-        sb.append("Method : ").append(request.getMethod()).append("\n");
-        sb.append("URI : ").append(request.getRequestURI()).append("\n");
+        if (log.isInfoEnabled()) {
 
-        String query = request.getQueryString();
-        if (query != null) {
-            sb.append("Query : ").append(query).append("\n");
+            log.info(
+                    " {} {} -> {} ({} ms)",
+                    method,
+                    uri,
+                    response.getStatus(),
+                    duration.toMillis());
         }
 
-        // IP Sorgente (con supporto proxy)
-        String clientIp = getClientIp(request);
-        sb.append("Client IP : ").append(clientIp).append("\n");
+        if (!log.isDebugEnabled()) {
+            return;
+        }
 
-        // User (da Principal o header)
-        String user = getUser(request);
-        sb.append("User : ").append(user).append("\n");
+        StringBuilder sb = new StringBuilder(4096);
 
-        // Headers (tutti)
-        sb.append("Headers :\n");
+        sb.append("\n================ REQUEST ================\n");
+        sb.append("Method        : ").append(method).append("\n");
+        sb.append("URI           : ").append(uri).append("\n");
+
+        if (request.getQueryString() != null) {
+            sb.append("Query         : ")
+                    .append(request.getQueryString())
+                    .append("\n");
+        }
+
+        sb.append("Client IP     : ")
+                .append(getClientIp(request))
+                .append("\n");
+
+        sb.append("User          : ")
+                .append(getUser())
+                .append("\n");
+
+        sb.append("User Roles    : ")
+                .append(getUserRoles())
+                .append("\n");
+
+        sb.append("\nHeaders:\n");
+        appendRequestHeaders(sb, request);
+
+        String requestBody = getRequestBody(request);
+
+        if (requestBody != null
+                && isTextContentType(request.getContentType())) {
+
+            sb.append("\nRequest Body:\n")
+                    .append(truncate(requestBody))
+                    .append("\n");
+        }
+
+        sb.append("\n================ RESPONSE ================\n");
+
+        sb.append("Status        : ")
+                .append(response.getStatus())
+                .append("\n");
+
+        sb.append("Duration      : ")
+                .append(duration.toMillis())
+                .append(" ms\n");
+
+        sb.append("\nHeaders:\n");
+        appendResponseHeaders(sb, response);
+
+        String responseBody = getResponseBody(response);
+
+        if (responseBody != null
+                && isTextContentType(response.getContentType())) {
+
+            sb.append("\nResponse Body:\n")
+                    .append(truncate(responseBody))
+                    .append("\n");
+        }
+
+        log.debug(sb.toString());
+    }
+
+    private String getUserRoles() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)) {
+                Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+                return authorities.stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.joining(", "));
+            }
+        } catch (Exception ex) {
+            log.error("Errore recupero ruoli utente da SecurityContext: {}", ex.getMessage());
+        }
+        return "NESSUN RUOLO";
+    }
+
+    private void appendRequestHeaders(
+            StringBuilder sb,
+            HttpServletRequest request) {
+
         Enumeration<String> headerNames = request.getHeaderNames();
+
         while (headerNames.hasMoreElements()) {
+
             String name = headerNames.nextElement();
             String value = request.getHeader(name);
+
             if (isSensitiveHeader(name)) {
                 value = "******";
             }
-            sb.append(" ").append(name).append(": ").append(value).append("\n");
-        }
 
-        // Body
-        String body = getRequestBody(request);
-        if (body != null && !body.isEmpty()) {
-            sb.append("Body : ").append(truncate(body)).append("\n");
+            sb.append(name)
+                    .append(": ")
+                    .append(value)
+                    .append("\n");
         }
-
-        log.info(sb.toString());
     }
 
-    private void logResponse(ContentCachingResponseWrapper response, long startTime) {
-        if (!log.isInfoEnabled()) return;
+    private void appendResponseHeaders(
+            StringBuilder sb,
+            HttpServletResponse response) {
 
-        long duration = System.currentTimeMillis() - startTime;
-
-        StringBuilder sb = new StringBuilder("\n RESPONSE\n");
-        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-
-        // Status
-        int status = response.getStatus();
-        sb.append("Status : ").append(status).append("\n");
-        sb.append("Duration : ").append(duration).append(" ms\n");
-
-        // Headers
-        sb.append("Headers :\n");
         Collection<String> headerNames = response.getHeaderNames();
+
         for (String name : headerNames) {
+
             String value = response.getHeader(name);
+
             if (isSensitiveHeader(name)) {
                 value = "******";
             }
-            sb.append(" ").append(name).append(": ").append(value).append("\n");
-        }
 
-        // Body (solo per risposte non binarie)
-        String body = getResponseBody(response);
-        if (body != null && !body.isEmpty() && !isBinaryContentType(response.getContentType())) {
-            sb.append("Body : ").append(truncate(body)).append("\n");
+            sb.append(name)
+                    .append(": ")
+                    .append(value)
+                    .append("\n");
         }
-
-        log.info(sb.toString());
     }
 
-    // --- Metodi helper ---
+
 
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
+
+        String[] headers = {
+                "X-Forwarded-For",
+                "X-Real-IP",
+                "Proxy-Client-IP",
+                "WL-Proxy-Client-IP",
+                "HTTP_CLIENT_IP",
+                "HTTP_X_FORWARDED_FOR"
+        };
+
+        for (String header : headers) {
+
+            String value = request.getHeader(header);
+
+            if (value != null
+                    && !value.isBlank()
+                    && !"unknown".equalsIgnoreCase(value)) {
+
+                return value.contains(",")
+                        ? value.split(",")[0].trim()
+                        : value;
+            }
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_CLIENT_IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        // Se multipli IP, prendi il primo
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
+
+        return request.getRemoteAddr();
     }
 
-    private String getUser(HttpServletRequest request) {
-        // Da Principal (Spring Security)
-        Principal principal = request.getUserPrincipal();
-        if (principal != null) {
-            return principal.getName();
+    private String getUser() {
+        try{
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if(authentication !=null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)){
+                return authentication.getName();
+            }
+        } catch (Exception ex) {
+            log.error("Errore recupero nome utente da SecurityContext: {}", ex.getMessage());
         }
 
-        // Da header custom
-        String userHeader = request.getHeader("X-User-Id");
-        if (userHeader != null) {
-            return userHeader;
-        }
-
-        return "anonymous";
+        return "USER ANONIMO";
     }
 
     private String getRequestBody(ContentCachingRequestWrapper request) {
+
         byte[] content = request.getContentAsByteArray();
-        if (content.length == 0) return null;
-        return new String(content, StandardCharsets.UTF_8);
+
+        if (content.length == 0) {
+            return null;
+        }
+
+        Charset charset =
+                getCharset(request.getCharacterEncoding());
+
+        return new String(content, charset);
     }
 
     private String getResponseBody(ContentCachingResponseWrapper response) {
+
         byte[] content = response.getContentAsByteArray();
-        if (content.length == 0) return null;
-        return new String(content, StandardCharsets.UTF_8);
+
+        if (content.length == 0) {
+            return null;
+        }
+
+        Charset charset =
+                getCharset(response.getCharacterEncoding());
+
+        return new String(content, charset);
     }
 
-    private String truncate(String text) {
-        if (text.length() <= MAX_BODY_LENGTH) return text;
-        return text.substring(0, MAX_BODY_LENGTH) + "... [TRUNCATED]";
+    private Charset getCharset(String encoding) {
+
+        try {
+
+            return Optional.ofNullable(encoding)
+                    .map(Charset::forName)
+                    .orElse(StandardCharsets.UTF_8);
+
+        } catch (Exception ex) {
+
+            return StandardCharsets.UTF_8;
+        }
     }
 
-    private boolean isSensitiveHeader(String name) {
-        String lower = name.toLowerCase();
-        return lower.contains("authorization") ||
-                lower.contains("cookie") ||
-                lower.contains("set-cookie") ||
-                lower.contains("x-api-key") ||
-                lower.contains("password") ||
-                lower.contains("secret");
+    private String truncate(String content) {
+
+        if (content.length() <= maxBodyLength) {
+            return content;
+        }
+
+        return content.substring(0, maxBodyLength)
+                + "... [TRUNCATED]";
     }
 
-    private boolean isBinaryContentType(String contentType) {
-        if (contentType == null) return false;
-        String lower = contentType.toLowerCase();
-        return lower.contains("image") ||
-                lower.contains("pdf") ||
-                lower.contains("zip") ||
-                lower.contains("octet-stream") ||
-                lower.contains("video") ||
-                lower.contains("audio");
+    private boolean isSensitiveHeader(String headerName) {
+
+        String header = headerName.toLowerCase();
+
+        return header.contains("authorization")
+                || header.contains("cookie")
+                || header.contains("set-cookie")
+                || header.contains("x-api-key")
+                || header.contains("password")
+                || header.contains("secret")
+                || header.contains("token");
+    }
+
+    private boolean isTextContentType(String contentType) {
+
+        if (contentType == null) {
+            return false;
+        }
+
+        String ct = contentType.toLowerCase();
+
+        return ct.startsWith("text/")
+                || ct.contains("application/json")
+                || ct.contains("+json")
+                || ct.contains("application/xml")
+                || ct.contains("+xml")
+                || ct.contains("application/x-www-form-urlencoded");
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // Escludi endpoint di health, metrics, swagger, ecc.
+
         String path = request.getRequestURI();
-        return path.startsWith("/actuator") ||
-                path.startsWith("/swagger-ui") ||
-                path.startsWith("/v3/api-docs") ||
-                path.startsWith("/favicon.ico");
+
+        return path.startsWith("/actuator")
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/favicon.ico");
     }
 }

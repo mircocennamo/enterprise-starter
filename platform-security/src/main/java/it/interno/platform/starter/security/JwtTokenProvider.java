@@ -16,10 +16,9 @@ public class JwtTokenProvider {
      * @return the token string, or null if not authenticated or no token found.
      */
     public Optional<String> getToken() {
-        log.info("aaaaa -> JwtTokenProvider -> getToken() called");
+        log.info("JwtTokenProvider -> getToken() called");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getCredentials() instanceof String token) {
-            log.info("bbbbbb");
             log.info("token {} " , token);
             return Optional.of(token);
         }
